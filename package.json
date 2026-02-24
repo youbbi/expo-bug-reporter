@@ -1,0 +1,29 @@
+{
+  "name": "@youbbi/expo-bug-reporter",
+  "version": "0.1.0",
+
+  "main": "src/index.ts",
+  "scripts": {
+    "test": "jest"
+  },
+  "peerDependencies": {
+    "react": ">=18.0.0",
+    "react-dom": ">=18.0.0"
+  },
+  "devDependencies": {
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@types/jest": "^29.5.0",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "jest": "^29.7.0",
+    "jest-environment-jsdom": "^30.2.0",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
+    "ts-jest": "^29.4.1",
+    "typescript": "~5.8.3"
+  },
+  "dependencies": {
+    "html2canvas": "^1.4.1"
+  }
+}
