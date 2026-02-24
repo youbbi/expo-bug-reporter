@@ -15,9 +15,14 @@ let originalError: typeof console.error | null = null;
 let originalWarn: typeof console.warn | null = null;
 
 function addToBuffer(level: 'error' | 'warn', args: unknown[]): void {
-  const message = args.map(a =>
-    typeof a === 'string' ? a : JSON.stringify(a)
-  ).join(' ');
+  const message = args.map(a => {
+    if (typeof a === 'string') return a;
+    try {
+      return JSON.stringify(a);
+    } catch {
+      return String(a);
+    }
+  }).join(' ');
 
   buffer.push({ level, message, timestamp: Date.now() });
 
@@ -27,6 +32,8 @@ function addToBuffer(level: 'error' | 'warn', args: unknown[]): void {
 }
 
 export function initConsoleBuffer(): void {
+  if (originalError) return; // Already initialized — prevent self-referencing loop
+
   originalError = console.error;
   originalWarn = console.warn;
 
@@ -46,5 +53,14 @@ export function getBufferedLogs(): BufferedLog[] {
 }
 
 export function clearBuffer(): void {
+  buffer = [];
+}
+
+/** Restore original console methods and reset state. Useful for teardown/testing. */
+export function resetConsoleBuffer(): void {
+  if (originalError) console.error = originalError;
+  if (originalWarn) console.warn = originalWarn;
+  originalError = null;
+  originalWarn = null;
   buffer = [];
 }

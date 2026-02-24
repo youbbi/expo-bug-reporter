@@ -1,17 +1,9 @@
-import { initConsoleBuffer, getBufferedLogs, clearBuffer } from '../src/consoleBuffer';
+import { initConsoleBuffer, getBufferedLogs, clearBuffer, resetConsoleBuffer } from '../src/consoleBuffer';
 
 describe('consoleBuffer', () => {
-  // Save originals so we can restore after each test
-  const originalError = console.error;
-  const originalWarn = console.warn;
-  const originalLog = console.log;
-
   afterEach(() => {
-    clearBuffer();
-    // Restore originals in case init was called
-    console.error = originalError;
-    console.warn = originalWarn;
-    console.log = originalLog;
+    // Fully reset: restores original console methods and clears module state
+    resetConsoleBuffer();
   });
 
   describe('capture', () => {
@@ -106,6 +98,38 @@ describe('consoleBuffer', () => {
 
       // The interceptor should have called through to the original
       expect(spy).toHaveBeenCalledWith('test');
+    });
+  });
+
+  describe('double-init guard', () => {
+    it('should not wrap console.error twice when initConsoleBuffer is called multiple times', () => {
+      const realError = console.error;
+
+      initConsoleBuffer();
+      initConsoleBuffer(); // second call should be a no-op
+
+      // Should not cause infinite recursion
+      console.error('no stack overflow');
+
+      const logs = getBufferedLogs();
+      expect(logs).toHaveLength(1);
+      expect(logs[0].message).toBe('no stack overflow');
+    });
+  });
+
+  describe('circular reference safety', () => {
+    it('should handle circular objects without throwing', () => {
+      initConsoleBuffer();
+
+      const circular: Record<string, unknown> = { a: 1 };
+      circular.self = circular;
+
+      // Should not throw
+      expect(() => console.error('circular:', circular)).not.toThrow();
+
+      const logs = getBufferedLogs();
+      expect(logs).toHaveLength(1);
+      expect(logs[0].message).toContain('circular:');
     });
   });
 });
