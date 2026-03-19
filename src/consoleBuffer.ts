@@ -13,21 +13,28 @@ export interface BufferedLog {
 let buffer: BufferedLog[] = [];
 let originalError: typeof console.error | null = null;
 let originalWarn: typeof console.warn | null = null;
+let isBuffering = false;
 
 function addToBuffer(level: 'error' | 'warn', args: unknown[]): void {
-  const message = args.map(a => {
-    if (typeof a === 'string') return a;
-    try {
-      return JSON.stringify(a);
-    } catch {
-      return String(a);
+  if (isBuffering) return; // Prevent re-entrant calls (infinite recursion)
+  isBuffering = true;
+  try {
+    const message = args.map(a => {
+      if (typeof a === 'string') return a;
+      try {
+        return JSON.stringify(a);
+      } catch {
+        return String(a);
+      }
+    }).join(' ');
+
+    buffer.push({ level, message, timestamp: Date.now() });
+
+    if (buffer.length > MAX_BUFFER_SIZE) {
+      buffer = buffer.slice(buffer.length - MAX_BUFFER_SIZE);
     }
-  }).join(' ');
-
-  buffer.push({ level, message, timestamp: Date.now() });
-
-  if (buffer.length > MAX_BUFFER_SIZE) {
-    buffer = buffer.slice(buffer.length - MAX_BUFFER_SIZE);
+  } finally {
+    isBuffering = false;
   }
 }
 
@@ -63,4 +70,5 @@ export function resetConsoleBuffer(): void {
   originalError = null;
   originalWarn = null;
   buffer = [];
+  isBuffering = false;
 }
