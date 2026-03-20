@@ -4,7 +4,7 @@
  */
 
 import React, { useEffect, useState, useCallback, useRef } from 'react';
-import { initConsoleBuffer, getBufferedLogs } from './consoleBuffer';
+import { initConsoleBuffer, getBufferedLogs, resetConsoleBuffer } from './consoleBuffer';
 import {
   startShakeDetection,
   stopShakeDetection,
@@ -12,7 +12,7 @@ import {
 } from './shakeDetector';
 import { captureScreenshot } from './screenshotCapture';
 import { gatherContext, GatherContextOptions } from './contextGatherer';
-import BugReportModal from './BugReportModal';
+import BugReportModal, { SubmitBugReport } from './BugReportModal';
 
 export interface BugReporterProps {
   webhookUrl: string;
@@ -21,6 +21,7 @@ export interface BugReporterProps {
   getRoute?: () => string | null;
   enabled?: boolean;
   shakeOptions?: ShakeDetectorOptions;
+  onSubmit?: SubmitBugReport;
   children?: React.ReactNode;
 }
 
@@ -31,6 +32,7 @@ const BugReporter: React.FC<BugReporterProps> = ({
   getRoute,
   enabled = true,
   shakeOptions,
+  onSubmit,
   children,
 }) => {
   const [modalVisible, setModalVisible] = useState(false);
@@ -38,13 +40,15 @@ const BugReporter: React.FC<BugReporterProps> = ({
   const [context, setContext] = useState<Record<string, unknown>>({});
   const getAppStateRef = useRef(getAppState);
   const getRouteRef = useRef(getRoute);
+  const modalVisibleRef = useRef(modalVisible);
 
   // Keep refs up to date
   getAppStateRef.current = getAppState;
   getRouteRef.current = getRoute;
+  modalVisibleRef.current = modalVisible;
 
   const handleShake = useCallback(async () => {
-    if (modalVisible) return;
+    if (modalVisibleRef.current) return;
 
     try {
       const [screenshotData, contextData] = await Promise.all([
@@ -65,7 +69,7 @@ const BugReporter: React.FC<BugReporterProps> = ({
     } catch {
       // Silently swallow — do NOT console.error here to avoid recursion risk.
     }
-  }, [modalVisible]);
+  }, []);
 
   useEffect(() => {
     if (!enabled) return;
@@ -75,6 +79,7 @@ const BugReporter: React.FC<BugReporterProps> = ({
 
     return () => {
       stopShakeDetection();
+      resetConsoleBuffer();
     };
   }, [enabled, handleShake, shakeOptions]);
 
@@ -94,6 +99,7 @@ const BugReporter: React.FC<BugReporterProps> = ({
         context={context}
         projectName={projectName}
         onClose={handleClose}
+        onSubmit={onSubmit}
       />
     </>
   );
