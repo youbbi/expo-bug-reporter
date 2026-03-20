@@ -97,4 +97,76 @@ describe('BugReportModal', () => {
     expect(defaultProps.onClose).toHaveBeenCalled();
     expect(mockFetch).not.toHaveBeenCalled();
   });
+
+  it('should handle non-JSON success response without crashing', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.reject(new SyntaxError('Unexpected token')),
+    });
+
+    render(<BugReportModal {...defaultProps} />);
+    fireEvent.change(screen.getByPlaceholderText('Describe the bug...'), {
+      target: { value: 'A bug' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /submit/i }));
+
+    await waitFor(() => {
+      expect(defaultProps.onClose).toHaveBeenCalled();
+      expect(defaultProps.onSubmitted).not.toHaveBeenCalled();
+    });
+  });
+
+  it('should handle JSON response missing issueUrl', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve({ status: 'ok' }),
+    });
+
+    render(<BugReportModal {...defaultProps} />);
+    fireEvent.change(screen.getByPlaceholderText('Describe the bug...'), {
+      target: { value: 'A bug' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /submit/i }));
+
+    await waitFor(() => {
+      expect(defaultProps.onClose).toHaveBeenCalled();
+      expect(defaultProps.onSubmitted).not.toHaveBeenCalled();
+    });
+  });
+
+  it('should use custom onSubmit when provided', async () => {
+    const customSubmit = jest.fn().mockResolvedValue({ issueUrl: 'https://custom.com/1' });
+
+    render(<BugReportModal {...defaultProps} onSubmit={customSubmit} />);
+    fireEvent.change(screen.getByPlaceholderText('Describe the bug...'), {
+      target: { value: 'Custom submit bug' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /submit/i }));
+
+    await waitFor(() => {
+      expect(customSubmit).toHaveBeenCalledWith({
+        description: 'Custom submit bug',
+        screenshot: defaultProps.screenshot,
+        context: defaultProps.context,
+        projectName: defaultProps.projectName,
+      });
+      expect(mockFetch).not.toHaveBeenCalled();
+      expect(defaultProps.onSubmitted).toHaveBeenCalledWith('https://custom.com/1');
+    });
+  });
+
+  it('should show error when custom onSubmit rejects', async () => {
+    const customSubmit = jest.fn().mockRejectedValue(new Error('Auth failed'));
+
+    render(<BugReportModal {...defaultProps} onSubmit={customSubmit} />);
+    fireEvent.change(screen.getByPlaceholderText('Describe the bug...'), {
+      target: { value: 'Bug' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /submit/i }));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('submit-error')).toBeTruthy();
+      expect(defaultProps.onClose).not.toHaveBeenCalled();
+    });
+  });
 });

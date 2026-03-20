@@ -10,6 +10,7 @@ jest.mock('../src/consoleBuffer', () => ({
   initConsoleBuffer: jest.fn(),
   getBufferedLogs: jest.fn(() => []),
   clearBuffer: jest.fn(),
+  resetConsoleBuffer: jest.fn(),
 }));
 
 jest.mock('../src/shakeDetector', () => ({
@@ -32,7 +33,7 @@ jest.mock('../src/contextGatherer', () => ({
   })),
 }));
 
-import { initConsoleBuffer } from '../src/consoleBuffer';
+import { initConsoleBuffer, resetConsoleBuffer } from '../src/consoleBuffer';
 import { startShakeDetection, stopShakeDetection } from '../src/shakeDetector';
 
 describe('BugReporter', () => {
@@ -111,5 +112,40 @@ describe('BugReporter', () => {
     });
 
     expect(screen.getByRole('dialog')).toBeTruthy();
+  });
+
+  it('should reset console buffer on unmount', () => {
+    const { unmount } = render(
+      <BugReporter webhookUrl="https://example.com/api/bug-report" projectName="test">
+        <div>App content</div>
+      </BugReporter>
+    );
+
+    unmount();
+    expect(resetConsoleBuffer).toHaveBeenCalledTimes(1);
+  });
+
+  it('should not re-register shake detection when modal opens and closes', async () => {
+    let shakeCallback: (() => void) | undefined;
+    (startShakeDetection as jest.Mock).mockImplementation((cb: () => void) => {
+      shakeCallback = cb;
+    });
+
+    render(
+      <BugReporter webhookUrl="https://example.com/api/bug-report" projectName="test">
+        <div>App content</div>
+      </BugReporter>
+    );
+
+    expect(startShakeDetection).toHaveBeenCalledTimes(1);
+
+    // Trigger shake to open modal
+    await act(async () => {
+      shakeCallback?.();
+    });
+
+    expect(screen.getByRole('dialog')).toBeTruthy();
+    // startShakeDetection should still only have been called once
+    expect(startShakeDetection).toHaveBeenCalledTimes(1);
   });
 });

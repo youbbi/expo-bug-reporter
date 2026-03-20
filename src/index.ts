@@ -1,7 +1,7 @@
 export { default as BugReporter } from './BugReporter';
 export type { BugReporterProps } from './BugReporter';
 export { default as BugReportModal } from './BugReportModal';
-export type { BugReportModalProps } from './BugReportModal';
+export type { BugReportModalProps, BugReportPayload, SubmitResult, SubmitBugReport } from './BugReportModal';
 export { initConsoleBuffer, getBufferedLogs, clearBuffer } from './consoleBuffer';
 export type { BufferedLog } from './consoleBuffer';
 export { gatherContext } from './contextGatherer';

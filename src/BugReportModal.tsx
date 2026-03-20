@@ -19,6 +19,39 @@ function safeStringify(obj: unknown): string {
   }
 }
 
+export interface BugReportPayload {
+  description: string;
+  screenshot: string | null;
+  context: Record<string, unknown>;
+  projectName: string;
+}
+
+export interface SubmitResult {
+  issueUrl?: string;
+}
+
+export type SubmitBugReport = (payload: BugReportPayload) => Promise<SubmitResult>;
+
+const defaultSubmitBugReport = (webhookUrl: string): SubmitBugReport =>
+  async (payload) => {
+    const response = await fetch(webhookUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: safeStringify(payload),
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to submit bug report.');
+    }
+
+    try {
+      const data = await response.json();
+      return { issueUrl: data.issueUrl };
+    } catch {
+      return {};
+    }
+  };
+
 export interface BugReportModalProps {
   visible: boolean;
   screenshot: string | null;
@@ -27,6 +60,7 @@ export interface BugReportModalProps {
   projectName: string;
   onClose: () => void;
   onSubmitted?: (issueUrl: string) => void;
+  onSubmit?: SubmitBugReport;
 }
 
 const BugReportModal: React.FC<BugReportModalProps> = ({
@@ -37,6 +71,7 @@ const BugReportModal: React.FC<BugReportModalProps> = ({
   projectName,
   onClose,
   onSubmitted,
+  onSubmit,
 }) => {
   const [description, setDescription] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -44,31 +79,20 @@ const BugReportModal: React.FC<BugReportModalProps> = ({
 
   if (!visible) return null;
 
+  const submitFn = onSubmit ?? defaultSubmitBugReport(webhookUrl);
+
   const handleSubmit = async () => {
     setSubmitting(true);
     setError(null);
     try {
-      const response = await fetch(webhookUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: safeStringify({
-          description,
-          screenshot,
-          context,
-          projectName,
-        }),
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        onSubmitted?.(data.issueUrl);
-        setDescription('');
-        onClose();
-      } else {
-        setError('Failed to submit bug report. Please try again.');
+      const result = await submitFn({ description, screenshot, context, projectName });
+      if (result.issueUrl) {
+        onSubmitted?.(result.issueUrl);
       }
+      setDescription('');
+      onClose();
     } catch {
-      setError('Network error — could not reach the server.');
+      setError('Failed to submit bug report. Please try again.');
     } finally {
       setSubmitting(false);
     }
