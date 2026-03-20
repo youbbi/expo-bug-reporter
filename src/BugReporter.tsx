@@ -46,21 +46,25 @@ const BugReporter: React.FC<BugReporterProps> = ({
   const handleShake = useCallback(async () => {
     if (modalVisible) return;
 
-    const [screenshotData, contextData] = await Promise.all([
-      captureScreenshot(),
-      Promise.resolve(
-        gatherContext({
-          getAppState: getAppStateRef.current,
-          getRoute: getRouteRef.current,
-        } as GatherContextOptions),
-      ),
-    ]);
+    try {
+      const [screenshotData, contextData] = await Promise.all([
+        captureScreenshot(),
+        Promise.resolve(
+          gatherContext({
+            getAppState: getAppStateRef.current,
+            getRoute: getRouteRef.current,
+          } as GatherContextOptions),
+        ),
+      ]);
 
-    const consoleLogs = getBufferedLogs();
+      const consoleLogs = getBufferedLogs();
 
-    setScreenshot(screenshotData);
-    setContext({ ...contextData, consoleLogs });
-    setModalVisible(true);
+      setScreenshot(screenshotData);
+      setContext({ ...contextData, consoleLogs });
+      setModalVisible(true);
+    } catch {
+      // Silently swallow — do NOT console.error here to avoid recursion risk.
+    }
   }, [modalVisible]);
 
   useEffect(() => {

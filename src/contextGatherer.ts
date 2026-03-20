@@ -25,8 +25,19 @@ export function gatherContext(options?: GatherContextOptions): BugContext {
     ? { width: window.innerWidth, height: window.innerHeight }
     : { width: 0, height: 0 };
 
-  const route = options?.getRoute?.() ?? null;
-  const appState = options?.getAppState?.() ?? null;
+  let route: string | null = null;
+  try {
+    route = options?.getRoute?.() ?? null;
+  } catch {
+    route = null;
+  }
+
+  let appState: unknown = null;
+  try {
+    appState = options?.getAppState?.() ?? null;
+  } catch {
+    appState = null;
+  }
 
   return {
     platform,

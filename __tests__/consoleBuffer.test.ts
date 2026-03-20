@@ -117,6 +117,27 @@ describe('consoleBuffer', () => {
     });
   });
 
+  describe('re-entrant originalError guard', () => {
+    it('should not stack overflow when originalError calls console.error', () => {
+      // Simulate the Expo/LogBox scenario: the "original" console.error
+      // is actually a wrapper that calls console.error again.
+      const realError = console.error;
+      console.error = (...args: unknown[]) => {
+        console.error('LogBox overlay triggered:', ...args);
+        realError.apply(console, args as [unknown, ...unknown[]]);
+      };
+
+      initConsoleBuffer();
+
+      // This should NOT cause infinite recursion
+      expect(() => console.error('user error')).not.toThrow();
+
+      const logs = getBufferedLogs();
+      expect(logs).toHaveLength(1);
+      expect(logs[0].message).toContain('user error');
+    });
+  });
+
   describe('circular reference safety', () => {
     it('should handle circular objects without throwing', () => {
       initConsoleBuffer();

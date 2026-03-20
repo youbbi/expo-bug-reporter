@@ -4,6 +4,21 @@
 
 import React, { useState } from 'react';
 
+function safeStringify(obj: unknown): string {
+  const seen = new WeakSet();
+  try {
+    return JSON.stringify(obj, (_key, value) => {
+      if (typeof value === 'object' && value !== null) {
+        if (seen.has(value)) return '[Circular]';
+        seen.add(value);
+      }
+      return value;
+    });
+  } catch {
+    return JSON.stringify({ error: 'Bug report context could not be serialized' });
+  }
+}
+
 export interface BugReportModalProps {
   visible: boolean;
   screenshot: string | null;
@@ -36,7 +51,7 @@ const BugReportModal: React.FC<BugReportModalProps> = ({
       const response = await fetch(webhookUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+        body: safeStringify({
           description,
           screenshot,
           context,
