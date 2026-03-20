@@ -43,4 +43,23 @@ describe('contextGatherer', () => {
     const ctx = gatherContext();
     expect(ctx.appState).toBeNull();
   });
+
+  it('should return null appState when getAppState throws', () => {
+    const ctx = gatherContext({
+      getAppState: () => { throw new Error('store not ready'); },
+    });
+
+    expect(ctx.appState).toBeNull();
+    expect(ctx.platform).toBeTruthy();
+    expect(ctx.timestamp).toBeLessThanOrEqual(Date.now());
+  });
+
+  it('should return null route when getRoute throws', () => {
+    const ctx = gatherContext({
+      getRoute: () => { throw new Error('navigation not mounted'); },
+    });
+
+    expect(ctx.route).toBeNull();
+    expect(ctx.platform).toBeTruthy();
+  });
 });
