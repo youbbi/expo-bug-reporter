@@ -16,25 +16,19 @@ let originalWarn: typeof console.warn | null = null;
 let isBuffering = false;
 
 function addToBuffer(level: 'error' | 'warn', args: unknown[]): void {
-  if (isBuffering) return; // Prevent re-entrant calls (infinite recursion)
-  isBuffering = true;
-  try {
-    const message = args.map(a => {
-      if (typeof a === 'string') return a;
-      try {
-        return JSON.stringify(a);
-      } catch {
-        return String(a);
-      }
-    }).join(' ');
-
-    buffer.push({ level, message, timestamp: Date.now() });
-
-    if (buffer.length > MAX_BUFFER_SIZE) {
-      buffer = buffer.slice(buffer.length - MAX_BUFFER_SIZE);
+  const message = args.map(a => {
+    if (typeof a === 'string') return a;
+    try {
+      return JSON.stringify(a);
+    } catch {
+      return String(a);
     }
-  } finally {
-    isBuffering = false;
+  }).join(' ');
+
+  buffer.push({ level, message, timestamp: Date.now() });
+
+  if (buffer.length > MAX_BUFFER_SIZE) {
+    buffer = buffer.slice(buffer.length - MAX_BUFFER_SIZE);
   }
 }
 
@@ -45,13 +39,25 @@ export function initConsoleBuffer(): void {
   originalWarn = console.warn;
 
   console.error = (...args: unknown[]) => {
-    addToBuffer('error', args);
-    originalError?.apply(console, args);
+    if (isBuffering) return;
+    isBuffering = true;
+    try {
+      addToBuffer('error', args);
+      originalError?.apply(console, args);
+    } finally {
+      isBuffering = false;
+    }
   };
 
   console.warn = (...args: unknown[]) => {
-    addToBuffer('warn', args);
-    originalWarn?.apply(console, args);
+    if (isBuffering) return;
+    isBuffering = true;
+    try {
+      addToBuffer('warn', args);
+      originalWarn?.apply(console, args);
+    } finally {
+      isBuffering = false;
+    }
   };
 }
 
