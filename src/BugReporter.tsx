@@ -22,6 +22,7 @@ export interface BugReporterProps {
   enabled?: boolean;
   shakeOptions?: ShakeDetectorOptions;
   onSubmit?: SubmitBugReport;
+  getHeaders?: () => Promise<Record<string, string>>;
   children?: React.ReactNode;
 }
 
@@ -33,6 +34,7 @@ const BugReporter: React.FC<BugReporterProps> = ({
   enabled = true,
   shakeOptions,
   onSubmit,
+  getHeaders,
   children,
 }) => {
   const [modalVisible, setModalVisible] = useState(false);
@@ -100,6 +102,7 @@ const BugReporter: React.FC<BugReporterProps> = ({
         projectName={projectName}
         onClose={handleClose}
         onSubmit={onSubmit}
+        getHeaders={getHeaders}
       />
     </>
   );

@@ -32,11 +32,15 @@ export interface SubmitResult {
 
 export type SubmitBugReport = (payload: BugReportPayload) => Promise<SubmitResult>;
 
-const defaultSubmitBugReport = (webhookUrl: string): SubmitBugReport =>
+const defaultSubmitBugReport = (
+  webhookUrl: string,
+  getHeaders?: () => Promise<Record<string, string>>,
+): SubmitBugReport =>
   async (payload) => {
+    const extraHeaders = getHeaders ? await getHeaders() : {};
     const response = await fetch(webhookUrl, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...extraHeaders },
       body: safeStringify(payload),
     });
 
@@ -61,6 +65,7 @@ export interface BugReportModalProps {
   onClose: () => void;
   onSubmitted?: (issueUrl: string) => void;
   onSubmit?: SubmitBugReport;
+  getHeaders?: () => Promise<Record<string, string>>;
 }
 
 const BugReportModal: React.FC<BugReportModalProps> = ({
@@ -72,6 +77,7 @@ const BugReportModal: React.FC<BugReportModalProps> = ({
   onClose,
   onSubmitted,
   onSubmit,
+  getHeaders,
 }) => {
   const [description, setDescription] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -79,7 +85,7 @@ const BugReportModal: React.FC<BugReportModalProps> = ({
 
   if (!visible) return null;
 
-  const submitFn = onSubmit ?? defaultSubmitBugReport(webhookUrl);
+  const submitFn = onSubmit ?? defaultSubmitBugReport(webhookUrl, getHeaders);
 
   const handleSubmit = async () => {
     setSubmitting(true);
